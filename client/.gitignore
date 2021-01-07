@@ -1,0 +1,5 @@
+# Don't include the obj folder
+obj
+
+#And don't include the binary
+client
