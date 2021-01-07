@@ -92,7 +92,7 @@ int main() {
 					std::cerr << "kennsh: Program exited with code " << (int)last_exit_code << std::endl;
 				}
 			}
-			catch (const kennsh::exit_request& er) {
+			catch (kennsh::exit_request& er) {
 				if (er.use_last_status_code) {
 					exit(last_exit_code);
 				}
