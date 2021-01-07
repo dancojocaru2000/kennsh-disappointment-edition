@@ -113,4 +113,22 @@ namespace kennsh::command::env {
 			return WEXITSTATUS(status);
 		}
 	}
+
+	uint8_t set(std::vector<std::string> args) {
+		args.erase(args.begin());
+		if (args.size() != 2) {
+			throw command_exception("set: 2 arguments are required");
+		}
+		setenv(args[0].c_str(), args[1].c_str(), 1);
+		return 0;
+	}
+
+	uint8_t unset(std::vector<std::string> args) {
+		args.erase(args.begin());
+		if (args.size() != 1) {
+			throw command_exception("unset: 1 argument is required");
+		}
+		unsetenv(args[0].c_str());
+		return 0;
+	}
 }

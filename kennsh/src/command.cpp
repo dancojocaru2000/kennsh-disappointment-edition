@@ -25,6 +25,7 @@ extern "C" {
 #include "cat.h"
 #include "head.h"
 #include "env.h"
+#include "cd.h"
 
 namespace kennsh {
 	namespace command {
@@ -342,6 +343,24 @@ namespace kennsh {
 					std::cerr << "$who_is_running: Internal command: env" << std::endl;
 				}
 				return env::env(args);
+			}
+			else if (executable == "~set") {
+				if (who_is_running) {
+					std::cerr << "$who_is_running: Internal command: set" << std::endl;
+				}
+				return env::set(args);
+			}
+			else if (executable == "~unset") {
+				if (who_is_running) {
+					std::cerr << "$who_is_running: Internal command: unset" << std::endl;
+				}
+				return env::unset(args);
+			}
+			else if (executable == "cd") {
+				if (who_is_running) {
+					std::cerr << "$who_is_running: Internal command: cd" << std::endl;
+				}
+				return cd::cd(args);
 			}
 			else {
 				if (who_is_running) {

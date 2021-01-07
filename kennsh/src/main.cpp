@@ -7,7 +7,7 @@ extern "C" {
 	// linenoise library for history and prompt
 	#include <stddef.h>
 	#include <linenoise.h>
-	// setenv
+	// setenv, getenv
 	#include <stdlib.h>
 	// isatty
 	#include <unistd.h>
@@ -51,7 +51,14 @@ std::string rawprompt(bool error) {
 		result += "[kennsh]";
 		// TODO: Path
 		result += " ";
+		auto old_value = getenv("who_is_running");
+		if (old_value != nullptr) {
+			setenv("who_is_running", "0", 1);
+		}
 		result += trim::trim_copy(kennsh::command::run_subcommand("pwd"));
+		if (old_value != nullptr) {
+			setenv("who_is_running", old_value, 1);
+		}
 		result += " >";
 		// result += "\x1b[0m";
 		result += " ";
@@ -66,6 +73,9 @@ int main() {
 	uint8_t last_exit_code = 0;
 
 	while (true) {
+		// Set status variable
+		kennsh::ewrap(setenv("status", std::to_string(last_exit_code).c_str(), 1));
+
 		// TODO: Set window title
 
 		// TODO: Check if at beginning of line, if not output newline
@@ -99,7 +109,6 @@ int main() {
 			try {
 				uint8_t errorcode = kennsh::command::handle(line);
 				last_exit_code = errorcode;
-				kennsh::ewrap(setenv("status", std::to_string(last_exit_code).c_str(), 1));
 				if (last_exit_code == 127) {
 					std::cerr << "kennsh: File or directory not found" << std::endl;
 				}
@@ -120,6 +129,7 @@ int main() {
 			}
 			catch (kennsh::command_exception& e) {
 				std::cerr << e.what() << std::endl;
+				last_exit_code = 1;
 			}
 		}
 	}
