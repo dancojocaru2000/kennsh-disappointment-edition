@@ -2,6 +2,7 @@
 #define KENNSH_COMMAND
 
 #include <string>
+#include <vector>
 #include <exception>
 
 namespace kennsh {
@@ -31,6 +32,7 @@ namespace kennsh {
 	
 	namespace command {
 		uint8_t handle(const std::string& line);
+		uint8_t process_command(std::vector<std::string>& args);
 		std::string run_subcommand(const std::string& subcommand);
 	}
 }

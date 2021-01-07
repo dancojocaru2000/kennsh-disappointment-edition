@@ -24,6 +24,7 @@ extern "C" {
 #include "env_stuff.h"
 #include "cat.h"
 #include "head.h"
+#include "env.h"
 
 namespace kennsh {
 	namespace command {
@@ -335,6 +336,12 @@ namespace kennsh {
 					std::cerr << "$who_is_running: Internal command: head" << std::endl;
 				}
 				return head::head(args);
+			}
+			else if (executable == "env") {
+				if (who_is_running) {
+					std::cerr << "$who_is_running: Internal command: env" << std::endl;
+				}
+				return env::env(args);
 			}
 			else {
 				if (who_is_running) {
