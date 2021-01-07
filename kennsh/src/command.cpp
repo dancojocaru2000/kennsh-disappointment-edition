@@ -12,6 +12,9 @@ extern "C" {
 	#include <sys/wait.h>
 	#include <stdlib.h>
 	#include <errno.h>
+	// for open
+	#include <sys/stat.h>
+	#include <fcntl.h>
 }
 
 #include "split.h"
@@ -333,7 +336,8 @@ namespace kennsh {
 			autoundup2 auto_stdin(STDIN_FD);
 			autoundup2 auto_stdout(STDOUT_FD);
 			autoundup2 auto_stderr(STDERR_FD);
-			for (auto& part : parts) {
+			for (auto part_iter = parts.begin(); part_iter != parts.end(); ++part_iter) {
+				auto& part = *part_iter;
 				trim::trim(part);
 
 				// Check for unescaped redirection
@@ -348,7 +352,102 @@ namespace kennsh {
 
 				bool is_redirection = false;
 
-
+				if (part[0] == '<' || part.size() > 1 && part[1] == '<' && part[0] != '`') {
+					if (part[0] != '<' && part[0] != '0') {
+						throw command_exception("kennsh: Syntax error: only fd 0 is supported for input redirection");
+					}
+					std::string path;
+					if (part[0] == '<') {
+						path = part.substr(1);
+					}
+					else {
+						path = part.substr(2);
+					}
+					if (path == "") {
+						// Look in next argument
+						++part_iter;
+						if (part_iter == parts.end()) {
+							throw command_exception("kennsh: Redirect error: expected filename after <; found end of command");
+						}
+						path = *part_iter;
+						trim::trim(path);
+					}
+					autoclose file(ewrap(open(path.c_str(), O_RDONLY)));
+					ewrap(dup2(file, STDIN_FD));
+					is_redirection = true;
+				}
+				if (is_redirection) {
+					continue;
+				}
+				if (part[0] == '>' || part.size() > 1 && part[1] == '>' && part[0] != '`') {
+					int fd = STDOUT_FD;
+					const int M_CREATE = 0;
+					const int M_APPEND = 1;
+					const int M_OVERWRITE = 2;
+					int mode = M_CREATE;
+					if (part[0] != '>' && part[0] != '1' && part[0] != '2') {
+						throw command_exception("kennsh: Syntax error: only fd 1 or 2 are supported for output redirection");
+					}
+					else if (part[0] != '>') {
+						fd = part[0] - '0';
+					}
+					std::string path;
+					if (part[0] == '>') {
+						path = part.substr(1);
+					}
+					else {
+						path = part.substr(2);
+					}
+					if (path != "" && (path[0] == '>' || path[0] == '|')) {
+						if (path[0] == '>') {
+							mode = M_APPEND;
+						}
+						else if (path[0] == '|') {
+							mode = M_OVERWRITE;
+						}
+						path = path.substr(1);
+					}
+					if (path == "") {
+						// Look in next argument
+						++part_iter;
+						if (part_iter == parts.end()) {
+							throw command_exception("kennsh: Redirect error: expected filename after >; found end of command");
+						}
+						path = *part_iter;
+						trim::trim(path);
+					}
+					int redirect_fd = -1;
+					if (path[0] == '&') {
+						path = path.substr(1);
+						std::stringstream ss(path);
+						ss >> redirect_fd;
+						if (redirect_fd != 1 && redirect_fd != 2) {
+							throw command_exception("kennsh: Syntax error: only fd 1 or 2 are supported for output redirection");
+						}
+					}
+					if (redirect_fd != -1) {
+						ewrap(dup2(redirect_fd, fd));
+					}
+					else {
+						int flags = O_WRONLY;
+						if (mode == M_CREATE) {
+							if (access(path.c_str(), F_OK) == 0) {
+								// File exists, error
+								throw command_exception("kennsh: File already exists; use >> to append or >| to overwrite");
+							}
+							flags |= O_CREAT;
+						}
+						else if (mode == M_APPEND) {
+							flags |= O_APPEND | O_CREAT;
+						}
+						else if (mode == M_OVERWRITE) {
+							flags |= O_TRUNC;
+						}
+						autoclose file(ewrap(open(path.c_str(), flags, 0777)));
+						ewrap(dup2(file, fd));
+					}
+					is_redirection = true;
+				}
 
 				if (!is_redirection) {
 					non_redirect.push_back(part);
@@ -359,7 +458,7 @@ namespace kennsh {
 		}
 
 		uint8_t process_pipe(const std::string& line) {
-			auto parts = split::split_command(line, "|");
+			auto parts = split::split_command(line, "|", ">");
 			if (parts.size() == 1) {
 				// Skip the pipe pipeline
 				return process_redirect(parts[0]);

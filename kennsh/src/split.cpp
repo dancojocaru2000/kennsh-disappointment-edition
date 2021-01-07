@@ -1,6 +1,10 @@
 #include "split.h"
 
 std::vector<std::string> split::split_command(const std::string& input, const std::string& split_at) {
+	return split::split_command(input, split_at, "");
+}
+
+std::vector<std::string> split::split_command(const std::string& input, const std::string& split_at, const std::string& skip) {
 	std::vector<std::string> result;
 	std::string buffer;
 
@@ -28,6 +32,10 @@ std::vector<std::string> split::split_command(const std::string& input, const st
 		else if (c == '`') {
 			escape_next = true;
 			// Keep ` in the buffer, only remove it in the last pass
+			buffer += c;
+		}
+		else if (skip.find(c) != std::string::npos) {
+			escape_next = true;
 			buffer += c;
 		}
 		else if (c == '\"' || c == '\'') {
