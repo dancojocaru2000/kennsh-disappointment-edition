@@ -8,6 +8,7 @@ extern "C" {
 
 #include "command.h"
 #include "c_error.h"
+#include "error.h"
 
 namespace kennsh::command::cd {
 	uint8_t cd(std::vector<std::string> args) {
@@ -18,10 +19,10 @@ namespace kennsh::command::cd {
 		int res = chdir(args[0].c_str());
 		if (res == -1) {
 			if (errno == EACCES) {
-				return 126;
+				return ec::PERMISSION_DENIED;
 			} 
 			else if (errno == ENOENT) {
-				return 127;
+				return ec::FILE_NOT_FOUND;
 			}
 			else {
 				ewrap(-1);

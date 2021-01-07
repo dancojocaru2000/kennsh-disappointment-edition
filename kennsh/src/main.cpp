@@ -11,6 +11,7 @@ extern "C" {
 	#include <stdlib.h>
 	// isatty
 	#include <unistd.h>
+	#include <errno.h>
 
 	// Hacky hack: hijack functions from linenoise
 	int enableRawMode(int fd);
@@ -23,6 +24,7 @@ extern "C" {
 #include "env_stuff.h"
 #include "trim.h"
 #include "command.h"
+#include "error.h"
 
 std::string prompt(bool error) {
 	auto use_powerline = kennsh::env_is_true("use_powerline");
@@ -109,15 +111,6 @@ int main() {
 			try {
 				uint8_t errorcode = kennsh::command::handle(line);
 				last_exit_code = errorcode;
-				if (last_exit_code == 127) {
-					std::cerr << "kennsh: File or directory not found" << std::endl;
-				}
-				else if (last_exit_code == 126) {
-					std::cerr << "kennsh: Permission denied" << std::endl;
-				}
-				else if (last_exit_code != 0) {
-					std::cerr << "kennsh: Program exited with code " << (int)last_exit_code << std::endl;
-				}
 			}
 			catch (kennsh::exit_request& er) {
 				if (er.use_last_status_code) {
@@ -129,7 +122,29 @@ int main() {
 			}
 			catch (kennsh::command_exception& e) {
 				std::cerr << e.what() << std::endl;
-				last_exit_code = 1;
+				last_exit_code = kennsh::ec::OTHER_ERROR;
+			}
+			catch (kennsh::c_error& e) {
+				if (e.num == ENOENT) {
+					last_exit_code = kennsh::ec::FILE_NOT_FOUND;
+				}
+				else if (e.num == EACCES) {
+					last_exit_code = kennsh::ec::PERMISSION_DENIED;
+				}
+				else {
+					std::cerr << e.what() << std::endl;
+					last_exit_code = kennsh::ec::OTHER_ERROR;
+				}
+			}
+
+			if (last_exit_code == 127) {
+				std::cerr << "kennsh: File or directory not found" << std::endl;
+			}
+			else if (last_exit_code == 126) {
+				std::cerr << "kennsh: Permission denied" << std::endl;
+			}
+			else if (last_exit_code != 0) {
+				std::cerr << "kennsh: Program exited with code " << (int)last_exit_code << std::endl;
 			}
 		}
 	}

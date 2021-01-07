@@ -26,6 +26,7 @@ extern "C" {
 #include "head.h"
 #include "env.h"
 #include "cd.h"
+#include "error.h"
 
 namespace kennsh {
 	namespace command {
@@ -60,12 +61,12 @@ namespace kennsh {
 				}
 				execvp(c_args[0], c_args.data());
 				if (errno == ENOENT) {
-					exit(127);
+					exit(ec::FILE_NOT_FOUND);
 				}
 				else if (errno == EACCES) {
-					exit(126);
+					exit(ec::PERMISSION_DENIED);
 				}
-				exit(1);
+				exit(ec::OTHER_ERROR);
 			}
 			else {
 				// Parent
@@ -517,17 +518,31 @@ namespace kennsh {
 
 				pid_t child_pid = ewrap(fork());
 				if (child_pid == 0) {
-					// Child
-					ewrap(close(new_pipe_read));
-					ewrap(dup2(old_pipe_read, STDIN_FD));
-					if (part_idx != parts.size() - 1) {
-						ewrap(dup2(new_pipe_write, STDOUT_FD));
+					try {
+						// Child
+						ewrap(close(new_pipe_read));
+						ewrap(dup2(old_pipe_read, STDIN_FD));
+						if (part_idx != parts.size() - 1) {
+							ewrap(dup2(new_pipe_write, STDOUT_FD));
+						}
+						else {
+							ewrap(close(new_pipe_write));
+						}
+						auto result = process_redirect(part);
+						exit(result);
 					}
-					else {
-						ewrap(close(new_pipe_write));
+					catch (c_error& e) {
+						if (e.num == ENOENT) {
+							exit(ec::FILE_NOT_FOUND);
+						}
+						else if (e.num == EACCES) {
+							exit(ec::PERMISSION_DENIED);
+						}
+						else {
+							std::cerr << e.what() << std::endl;
+							exit(ec::OTHER_ERROR);
+						}
 					}
-					auto result = process_redirect(part);
-					exit(result);
 				}
 				else {
 					// Parent
