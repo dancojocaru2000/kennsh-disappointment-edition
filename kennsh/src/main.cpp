@@ -9,6 +9,13 @@ extern "C" {
 	#include <linenoise.h>
 	// setenv
 	#include <stdlib.h>
+	// isatty
+	#include <unistd.h>
+
+	// Hacky hack: hijack functions from linenoise
+	int enableRawMode(int fd);
+	void disableRawMode(int fd);
+	int getCursorPosition(int ifd, int ofd);
 }
 
 #include "file_stuff.h"
@@ -43,6 +50,8 @@ std::string rawprompt(bool error) {
 		// result += "m";
 		result += "[kennsh]";
 		// TODO: Path
+		result += " ";
+		result += trim::trim_copy(kennsh::command::run_subcommand("pwd"));
 		result += " >";
 		// result += "\x1b[0m";
 		result += " ";
@@ -60,6 +69,15 @@ int main() {
 		// TODO: Set window title
 
 		// TODO: Check if at beginning of line, if not output newline
+		if (isatty(kennsh::STDIN_FD)) {
+			enableRawMode(kennsh::STDIN_FD);
+			auto cp = getCursorPosition(kennsh::STDIN_FD, kennsh::STDOUT_FD);
+			disableRawMode(kennsh::STDIN_FD);
+			// std::cerr << "cp: " << cp << std::endl;
+			if (cp != 1) {
+				std::cout << "\x1b[7m⏎\x1b[27m" << std::endl;
+			}
+		}
 
 		// If some application would forget to reset stdin to blocking, reset it
 		try {

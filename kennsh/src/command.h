@@ -31,6 +31,7 @@ namespace kennsh {
 	
 	namespace command {
 		uint8_t handle(const std::string& line);
+		std::string run_subcommand(const std::string& subcommand);
 	}
 }
 

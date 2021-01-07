@@ -23,6 +23,7 @@ extern "C" {
 #include "c_error.h"
 #include "env_stuff.h"
 #include "cat.h"
+#include "head.h"
 
 namespace kennsh {
 	namespace command {
@@ -328,6 +329,12 @@ namespace kennsh {
 					std::cerr << "$who_is_running: Internal command: cat" << std::endl;
 				}
 				return cat::cat(args);
+			}
+			else if (executable == "head") {
+				if (who_is_running) {
+					std::cerr << "$who_is_running: Internal command: head" << std::endl;
+				}
+				return head::head(args);
 			}
 			else {
 				if (who_is_running) {

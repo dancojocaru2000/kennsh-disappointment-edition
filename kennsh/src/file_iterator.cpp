@@ -76,10 +76,71 @@ namespace kennsh::file_iterator {
 		this->operator++();
 	}
 
-	bool lines_iterator::operator==(const lines_iterator& other) {
+	bool lines_iterator::operator==(const lines_iterator& other) const {
 		if (this->eof && other.eof && this->result_buffer == other.result_buffer) {
 			return true;
 		}
 		return this->eof == other.eof && this->fd == other.fd && this->result_buffer == other.result_buffer;
+	}
+
+	bytes_iterator::bytes_iterator() :
+		eof(true),
+		fd(-1) {}
+	
+	bytes_iterator::bytes_iterator(int fd) :
+		eof(false),
+		fd(fd),
+		read_buffer_position(0),
+		read_buffer_size(0) {
+		this->read_buffer[4096] = 0;
+		this->advance();
+	}
+
+	void bytes_iterator::advance() {
+		if (this->read_buffer_position < this->read_buffer_size) {
+			this->read_buffer_position++;
+		}
+		else {
+			if (eof) {
+				// Nothing can be done
+			}
+			else {
+				this->read_buffer_position = 0;
+				auto bytes_read = ewrap(read(this->fd, this->read_buffer, 4096));
+				this->read_buffer_size = bytes_read;
+				this->read_buffer[bytes_read] = 0;
+				if (bytes_read == 0) {
+					this->eof = true;
+				}
+			}
+		}
+	}
+
+	bytes_iterator& bytes_iterator::begin() {
+		return *this;
+	}
+
+	bytes_iterator bytes_iterator::end() {
+		return bytes_iterator();
+	}
+
+	bytes_iterator& bytes_iterator::operator++() {
+		this->advance();
+		return *this;
+	}
+
+	void bytes_iterator::operator++(int) {
+		this->operator++();
+	}
+
+	bool bytes_iterator::operator==(const bytes_iterator& other) const {
+		if (this->eof && other.eof) {
+			return true;
+		}
+		return this->eof == other.eof && this->fd == other.fd;
+	}
+
+	uint8_t bytes_iterator::operator*() const {
+		return this->read_buffer[this->read_buffer_position];
 	}
 }
